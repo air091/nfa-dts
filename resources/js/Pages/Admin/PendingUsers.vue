@@ -41,15 +41,21 @@
                 </select>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <select
-                  v-model="user.assignedUnit"
-                  class="text-sm border border-gray-300 rounded px-2 py-1 w-48"
-                >
-                  <option value="">Select Unit</option>
-                  <option v-for="unit in units" :key="unit.id" :value="unit.id">
-                    {{ unit.full_name }}
-                  </option>
-                </select>
+                <div>
+                  <select
+                    v-model="user.assignedUnit"
+                    class="text-sm border border-gray-300 rounded px-2 py-1 w-48"
+                    :class="{ 'border-red-500': !!getUnitAssignmentError(user) }"
+                  >
+                    <option value="">Select Unit</option>
+                    <option v-for="unit in units" :key="unit.id" :value="unit.id">
+                      {{ unit.full_name }}
+                    </option>
+                  </select>
+                  <p v-if="getUnitAssignmentError(user)" class="mt-1 text-xs text-red-600">
+                    {{ getUnitAssignmentError(user) }}
+                  </p>
+                </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                 <button
@@ -115,6 +121,22 @@
       </div>
     </div>
   </div>
+
+  <div v-if="showWarningModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black bg-opacity-50" @click="closeWarningModal"></div>
+    <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <h4 class="text-lg font-semibold text-red-500 mb-2">Warning</h4>
+      <p class="text-sm text-gray-700">{{ warningMessage }}</p>
+      <div class="mt-5 flex justify-end">
+        <button
+          @click="closeWarningModal"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -130,6 +152,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  takenDoUnits: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
 const pendingUsers = ref(props.pendingUsers.map(user => ({
@@ -139,13 +165,88 @@ const pendingUsers = ref(props.pendingUsers.map(user => ({
 })))
 const bulkRole = ref('')
 const bulkUnit = ref('')
+const showWarningModal = ref(false)
+const warningMessage = ref('')
+
+const getUnitById = (unitId) => {
+  if (!unitId) {
+    return null
+  }
+
+  return props.units.find(unit => String(unit.id) === String(unitId)) || null
+}
+
+const isDoUnit = (unit) => {
+  const fullName = (unit?.full_name || '').trim().toUpperCase()
+  return fullName.endsWith('/DO')
+}
+
+const getPendingConflict = (user) => {
+  const unit = getUnitById(user.assignedUnit)
+  if (!unit || !isDoUnit(unit)) {
+    return null
+  }
+
+  return pendingUsers.value.find(other =>
+    other.id !== user.id &&
+    String(other.assignedUnit) === String(user.assignedUnit)
+  ) || null
+}
+
+const getUnitAssignmentError = (user) => {
+  if (!user.assignedUnit) {
+    return ''
+  }
+
+  const selectedUnit = getUnitById(user.assignedUnit)
+  if (!selectedUnit) {
+    return 'Selected unit is invalid.'
+  }
+
+  if (!isDoUnit(selectedUnit)) {
+    return ''
+  }
+
+  const takenInfo = props.takenDoUnits[String(selectedUnit.id)]
+  if (takenInfo) {
+    return `There is an existing "${selectedUnit.full_name}" unit account.`
+  }
+
+  const pendingConflict = getPendingConflict(user)
+  if (pendingConflict) {
+    return `${selectedUnit.full_name} is already selected for ${pendingConflict.name}.`
+  }
+
+  return ''
+}
+
+const canApproveUser = (user) => {
+  return Boolean(user.assignedRole && user.assignedUnit && !getUnitAssignmentError(user))
+}
+
+const openWarningModal = (message) => {
+  warningMessage.value = message
+  showWarningModal.value = true
+}
+
+const closeWarningModal = () => {
+  showWarningModal.value = false
+  warningMessage.value = ''
+}
 
 // Watch for changes in props and update the local state
 watch(() => props.pendingUsers, (newPendingUsers) => {
+  const currentAssignments = new Map(
+    pendingUsers.value.map(user => [user.id, {
+      assignedRole: user.assignedRole,
+      assignedUnit: user.assignedUnit,
+    }])
+  )
+
   pendingUsers.value = newPendingUsers.map(user => ({
     ...user,
-    assignedRole: '',
-    assignedUnit: ''
+    assignedRole: currentAssignments.get(user.id)?.assignedRole || '',
+    assignedUnit: currentAssignments.get(user.id)?.assignedUnit || '',
   }))
 }, { deep: true })
 
@@ -154,14 +255,33 @@ const approveUser = (user) => {
     alert('Please select both role and unit before approving')
     return
   }
+
+  const unitError = getUnitAssignmentError(user)
+  if (unitError) {
+    openWarningModal(unitError)
+    return
+  }
   
   router.put(`/admin/users/${user.id}/approve`, {
     role: user.assignedRole,
     unit_id: user.assignedUnit,
   }, {
+    preserveState: true,
     onSuccess: () => {
       // Remove user from pending list
       pendingUsers.value = pendingUsers.value.filter(u => u.id !== user.id)
+    },
+    onError: (errors) => {
+      const serverMessage = errors?.unit_id || errors?.users || errors?.message || ''
+      const selectedUnitName = getUnitById(user.assignedUnit)?.full_name || 'DO'
+      if (serverMessage.includes('already assigned')) {
+        openWarningModal(`There is an existing "${selectedUnitName}" unit account.`)
+        return
+      }
+
+      if (serverMessage) {
+        openWarningModal(serverMessage)
+      }
     },
   })
 }
@@ -178,9 +298,18 @@ const bulkApprove = () => {
     return
   }
   
-  const usersToApprove = pendingUsers.value.filter(user => user.assignedRole && user.assignedUnit)
+  const usersToApprove = pendingUsers.value.filter(user => {
+    const resolvedRole = user.assignedRole || bulkRole.value
+    const resolvedUnit = user.assignedUnit || bulkUnit.value
+
+    if (!resolvedRole || !resolvedUnit) {
+      return false
+    }
+
+    return !getUnitAssignmentError({ ...user, assignedUnit: resolvedUnit })
+  })
   if (usersToApprove.length === 0) {
-    alert('Please assign roles and units to users before bulk approval')
+    alert('Please assign valid roles and units to users before bulk approval')
     return
   }
   

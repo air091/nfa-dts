@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class UnitManagementController extends Controller
@@ -37,18 +38,30 @@ class UnitManagementController extends Controller
 
     public function store(Request $request)
     {
+        $normalizedCode = strtoupper(trim((string) $request->code));
+        $normalizedFullName = strtoupper(trim((string) $request->full_name));
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:units',
-            'full_name' => 'required|string|max:255',
+            'code' => ['required', 'string', 'max:50', Rule::unique('units', 'code')],
+            'full_name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9]+\/[A-Za-z0-9]+$/',
+                Rule::unique('units', 'full_name'),
+            ],
             'description' => 'nullable|string',
             'is_active' => 'boolean',
+        ], [
+            'full_name.regex' => 'Full Name must follow the format DEPARTMENT/UNIT (example: CPMSD/DO).',
+            'full_name.unique' => 'This unit already exists.',
         ]);
 
         Unit::create([
             'name' => $request->name,
-            'code' => $request->code,
-            'full_name' => $request->full_name,
+            'code' => $normalizedCode,
+            'full_name' => $normalizedFullName,
             'description' => $request->description,
             'is_active' => $request->is_active ?? true,
         ]);
@@ -58,18 +71,30 @@ class UnitManagementController extends Controller
 
     public function update(Request $request, Unit $unit)
     {
+        $normalizedCode = strtoupper(trim((string) $request->code));
+        $normalizedFullName = strtoupper(trim((string) $request->full_name));
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:units,code,' . $unit->id,
-            'full_name' => 'required|string|max:255',
+            'code' => ['required', 'string', 'max:50', Rule::unique('units', 'code')->ignore($unit->id)],
+            'full_name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[A-Za-z0-9]+\/[A-Za-z0-9]+$/',
+                Rule::unique('units', 'full_name')->ignore($unit->id),
+            ],
             'description' => 'nullable|string',
             'is_active' => 'boolean',
+        ], [
+            'full_name.regex' => 'Full Name must follow the format DEPARTMENT/UNIT (example: CPMSD/DO).',
+            'full_name.unique' => 'This unit already exists.',
         ]);
 
         $unit->update([
             'name' => $request->name,
-            'code' => $request->code,
-            'full_name' => $request->full_name,
+            'code' => $normalizedCode,
+            'full_name' => $normalizedFullName,
             'description' => $request->description,
             'is_active' => $request->is_active,
         ]);

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
@@ -33,6 +33,44 @@ const searchForm = useForm({
     status: props.filters.status !== undefined ? props.filters.status : '',
 })
 
+function normalizeUnitName(value) {
+    return (value || '').trim().toUpperCase()
+}
+
+function isValidFullNameFormat(value) {
+    return /^[A-Za-z0-9]+\/[A-Za-z0-9]+$/.test((value || '').trim())
+}
+
+const createFullNameError = computed(() => {
+    const fullName = createForm.full_name || ''
+    if (!fullName.trim()) {
+        return ''
+    }
+    if (!isValidFullNameFormat(fullName)) {
+        return 'Format must be DEPARTMENT/UNIT (example: CPMSD/DO).'
+    }
+
+    const normalized = normalizeUnitName(fullName)
+    const exists = (props.units?.data || []).some(unit => normalizeUnitName(unit.full_name) === normalized)
+    return exists ? `Unit ${normalized} already exists.` : ''
+})
+
+const editFullNameError = computed(() => {
+    const fullName = editForm.full_name || ''
+    if (!fullName.trim()) {
+        return ''
+    }
+    if (!isValidFullNameFormat(fullName)) {
+        return 'Format must be DEPARTMENT/UNIT (example: CPMSD/DO).'
+    }
+
+    const normalized = normalizeUnitName(fullName)
+    const exists = (props.units?.data || []).some(unit =>
+        unit.id !== selectedUnit.value?.id && normalizeUnitName(unit.full_name) === normalized
+    )
+    return exists ? `Unit ${normalized} already exists.` : ''
+})
+
 function openCreateModal() {
     showCreateModal.value = true
     createForm.reset()
@@ -50,6 +88,10 @@ function openEditModal(unit) {
 }
 
 function submitCreate() {
+    if (createFullNameError.value) {
+        return
+    }
+
     createForm.post(route('admin.units.store'), {
         onSuccess: () => {
             showCreateModal.value = false
@@ -59,6 +101,10 @@ function submitCreate() {
 }
 
 function submitEdit() {
+    if (editFullNameError.value) {
+        return
+    }
+
     editForm.put(route('admin.units.update', selectedUnit.value.id), {
         onSuccess: () => {
             showEditModal.value = false
@@ -200,6 +246,8 @@ watch(() => props.filters, (newFilters) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                             <input v-model="createForm.full_name" type="text" required placeholder="e.g., CPMSD/DO"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <p v-if="createFullNameError" class="mt-1 text-xs text-red-600">{{ createFullNameError }}</p>
+                            <p v-if="createForm.errors.full_name" class="mt-1 text-xs text-red-600">{{ createForm.errors.full_name }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -215,7 +263,7 @@ watch(() => props.filters, (newFilters) => {
                             <button type="button" @click="showCreateModal = false" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
                                 Cancel
                             </button>
-                            <button type="submit" :disabled="createForm.processing" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                            <button type="submit" :disabled="createForm.processing || !!createFullNameError" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                                 Create Unit
                             </button>
                         </div>
@@ -247,6 +295,8 @@ watch(() => props.filters, (newFilters) => {
                             <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                             <input v-model="editForm.full_name" type="text" required
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <p v-if="editFullNameError" class="mt-1 text-xs text-red-600">{{ editFullNameError }}</p>
+                            <p v-if="editForm.errors.full_name" class="mt-1 text-xs text-red-600">{{ editForm.errors.full_name }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -262,7 +312,7 @@ watch(() => props.filters, (newFilters) => {
                             <button type="button" @click="showEditModal = false" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
                                 Cancel
                             </button>
-                            <button type="submit" :disabled="editForm.processing" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                            <button type="submit" :disabled="editForm.processing || !!editFullNameError" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
                                 Update Unit
                             </button>
                         </div>

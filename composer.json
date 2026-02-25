@@ -8,6 +8,7 @@
         "framework"
     ],
     "license": "MIT",
+    "php": "^8.2",
     "require": {
         "php": "^8.2",
         "inertiajs/inertia-laravel": "^2.0",

@@ -7,9 +7,9 @@ const props = defineProps({
     type: Array,
     default: () => [
       '/images/Slideshow/s1.webp',
-      '/images/Slideshow/s2.webp',
       '/images/Slideshow/s3.webp',
       '/images/Slideshow/s4.webp',
+      '/images/Slideshow/s2.webp',
       '/images/Slideshow/s5.webp',
       '/images/Slideshow/s6.webp',
     ],
