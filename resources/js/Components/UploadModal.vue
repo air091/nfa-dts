@@ -68,7 +68,6 @@ const trackingCodeDisplay = computed({
 const isDocumentTypeOpen = ref(false)
 const isOriginTypeOpen = ref(false)
 const isPriorityOpen = ref(false)
-const isRoutingOpen = ref(false)
 const isDepartmentOpen = ref(false)
 const isForwardToDepartmentOpen = ref(false)
 
@@ -97,8 +96,6 @@ const statusOptions = [
 const documentTypes = ['Memo', 'Letter', 'PR', 'DV']
 
 const priorities = [
-    'Instant (3 seconds)',
-    'Regular (1 day)',
     'Simple (3 days)',
     'Complex (7 days)',
     'Highly Technical (20 days)',
@@ -110,11 +107,7 @@ function getPriorityCircleColor(priority) {
   
   const priorityLower = priority.toLowerCase()
   
-  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
-    return 'bg-gray-500'
-  } else if (priorityLower.includes('regular') || priorityLower.includes('1 day')) {
-    return 'bg-green-500'
-  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'bg-blue-500'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'bg-red-500'
@@ -130,11 +123,7 @@ function getPriorityTextColor(priority) {
   
   const priorityLower = priority.toLowerCase()
   
-  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
-    return 'text-gray-600'
-  } else if (priorityLower.includes('regular') || priorityLower.includes('1 day')) {
-    return 'text-green-600'
-  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'text-blue-600'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'text-red-600'
@@ -216,9 +205,22 @@ function selectUser(user) {
     formData.value.uploadTo = user.name
     if (user.unit_name && user.unit_name !== 'N/A') {
         formData.value.forwardToDepartment = user.unit_name
+        // Automatically set routing based on unit comparison
+        determineRouting()
     }
     showUserSuggestions.value = false
     selectedUserIndex.value = -1
+}
+
+function determineRouting() {
+    // Compare originating office with forward to department
+    // If they're the same unit, it's internal; otherwise it's external
+    const originatingUnit = (formData.value.originatingOffice || '').trim().toUpperCase()
+    const forwardUnit = (formData.value.forwardToDepartment || '').trim().toUpperCase()
+    
+    if (originatingUnit && forwardUnit) {
+        formData.value.routing = originatingUnit === forwardUnit ? 'internal' : 'external'
+    }
 }
 
 function handleKeydown(event) {
@@ -375,6 +377,11 @@ watch(() => currentUserFromPage.value, (newUser) => {
         }
     }
 }, { immediate: true })
+
+// Watch forwardToDepartment to automatically update routing
+watch(() => formData.value.forwardToDepartment, () => {
+    determineRouting()
+})
 </script>
 
 <template>
@@ -469,20 +476,16 @@ watch(() => currentUserFromPage.value, (newUser) => {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Origin Type *</label>
                 <input type="text" value="Internal" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" />
               </div>
-              <!-- Routing -->
-              <div class="relative">
+              <!-- Routing (Automatically determined) -->
+              <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Routing *</label>
-                <div class="relative">
-                  <select v-model="formData.routing" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer pr-12" @focus="isRoutingOpen = true" @blur="isRoutingOpen = false">
-                    <option value="internal">Internal</option>
-                    <option value="external">External</option>
-                  </select>
-                  <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                    <svg class="w-5 h-5 text-gray-700 font-bold transition-transform duration-200" :class="{ 'rotate-180': isRoutingOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </div>
-                </div>
+                <input 
+                  type="text" 
+                  :value="formData.routing === 'internal' ? 'Internal' : 'External'" 
+                  readonly 
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed font-semibold" 
+                  :class="formData.routing === 'internal' ? 'text-blue-600' : 'text-orange-600'"
+                />
               </div>
               <!-- Department/Office -->
               <div>
