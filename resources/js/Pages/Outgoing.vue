@@ -667,7 +667,6 @@ function getPriorityDays(priority) {
   }
 
   return 0
-
 }
 
 function getReceivedDate(document) {
