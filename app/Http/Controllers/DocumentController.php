@@ -476,7 +476,7 @@ class DocumentController extends Controller
                 Log::info('Clerk forward validation passed', ['recipient_name' => $recipientName]);
                 
             } else {
-                // Regular forwarding rules
+                // Standard forwarding rules
                 if ($forwardToUserDepartment !== $userDepartment) {
                     $errors[] = "Recipient not in same department: {$recipientName}";
                     continue;

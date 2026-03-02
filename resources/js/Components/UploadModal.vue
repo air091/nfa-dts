@@ -96,9 +96,11 @@ const statusOptions = [
 const documentTypes = ['Memo', 'Letter', 'PR', 'DV']
 
 const priorities = [
-    'Simple (3 days)',
-    'Complex (7 days)',
-    'Highly Technical (20 days)',
+  'Urgent (within the day)',
+  'Standard (1 day)',
+  'Simple (3 days)',
+  'Complex (7 days)',
+  'Highly Technical (20 days)',
 ]
 
 // Priority color functions
@@ -113,6 +115,10 @@ function getPriorityCircleColor(priority) {
     return 'bg-red-500'
   } else if (priorityLower.includes('highly technical') || priorityLower.includes('20 days')) {
     return 'bg-yellow-500'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'bg-emerald-600'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'bg-green-500'
   }
   
   return 'bg-gray-400'
@@ -125,6 +131,10 @@ function getPriorityTextColor(priority) {
   
   if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'text-blue-600'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'text-emerald-700'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'text-green-600'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'text-red-600'
   } else if (priorityLower.includes('highly technical') || priorityLower.includes('20 days')) {

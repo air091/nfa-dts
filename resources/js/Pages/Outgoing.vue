@@ -577,6 +577,9 @@ async function handleUpload(uploadData) {
 
 
 // ARTA Color Palette for Priorities - Circle Indicator
+// Instant (3 seconds) → Gray
+// Urgent (within the day) → Green (higher urgency)
+// Standard (1 day) → Green
 // Simple (3 days) → Blue
 // Complex (7 days) → Red
 // Highly Technical (20 days) → Yellow
@@ -584,8 +587,13 @@ function getPriorityCircleColor(priority) {
   if (!priority) return 'bg-gray-400'
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 'bg-gray-500'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'bg-emerald-600'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'bg-green-500'
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'bg-blue-500'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'bg-red-500'
@@ -600,8 +608,13 @@ function getPriorityTextColor(priority) {
   if (!priority) return 'text-gray-600'
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 'text-gray-600 font-semibold'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'text-emerald-700 font-semibold'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'text-green-600 font-semibold'
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'text-blue-600 font-semibold'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'text-red-600 font-semibold'
@@ -639,17 +652,23 @@ function getPriorityDays(priority) {
   if (!priority) return 0
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 3 / 86400 // 3 seconds in days
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 1
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 1
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 3
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 7
   } else if (priorityLower.includes('highly technical') || priorityLower.includes('20 days')) {
     return 20
   }
-  
+
   return 0
-}}
+
+}
 
 function getReceivedDate(document) {
   // Only use accepted_by_do_at - this is the actual timestamp when document was accepted/received

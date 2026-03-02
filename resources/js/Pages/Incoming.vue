@@ -12,6 +12,12 @@
         <p class="text-sm text-gray-600 mt-1">Documents pending your approval</p>
       </div>
       <Table :columns="approvalColumns" :rows="pendingDocuments">
+        <template #priority="{ row }">
+          <span class="inline-flex items-center gap-2 text-sm font-medium text-gray-900">
+            <span class="w-2.5 h-2.5 rounded-full" :class="getPriorityCircleColor(row.priority)"></span>
+            {{ row.priority || '-' }}
+          </span>
+        </template>
         <template #ACTIONS="{ row }">
           <div class="flex gap-2">
             <button 
@@ -610,6 +616,7 @@ const approvalColumns = [
   { label: 'SUBJECT/TITLE', key: 'subject' },
   { label: 'UPLOADED BY', key: 'upload_by' },
   { label: 'UNIT', key: 'unit' },
+  { label: 'PRIORITY', key: 'priority' },
   { label: 'ACTIONS', key: 'ACTIONS' },
 ];
 
@@ -629,10 +636,13 @@ const receivedColumns = [
 
 
 // Transform documents to include unit field for display
+// "unit" column should actually show originating office per UI request,
+// but we keep the key name `unit` so existing table column definitions
+// remain unchanged.
 const transformedDocuments = computed(() => {
   return documents.value.map(doc => ({
     ...doc,
-    unit: doc.upload_to_user?.unit?.full_name || 'N/A'
+    unit: doc.originating_office || doc.upload_to_user?.unit?.full_name || 'N/A'
   }));
 });
 
@@ -1082,6 +1092,10 @@ async function archiveDocument(documentId) {
 }
 
 // ARTA Color Palette for Priorities - Circle Indicator
+// ARTA Color Palette for Priorities - Circle Indicator
+// Instant (3 seconds) → Gray
+// Urgent (within the day) → Green (higher urgency)
+// Standard (1 day) → Green
 // Simple (3 days) → Blue
 // Complex (7 days) → Red
 // Highly Technical (20 days) → Yellow
@@ -1089,8 +1103,13 @@ function getPriorityCircleColor(priority) {
   if (!priority) return 'bg-gray-400'
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 'bg-gray-500'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'bg-emerald-600'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'bg-green-500'
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'bg-blue-500'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'bg-red-500'
@@ -1105,8 +1124,13 @@ function getPriorityTextColor(priority) {
   if (!priority) return 'text-gray-600'
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 'text-gray-600 font-semibold'
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 'text-emerald-700 font-semibold'
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 'text-green-600 font-semibold'
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 'text-blue-600 font-semibold'
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 'text-red-600 font-semibold'
@@ -1144,15 +1168,20 @@ function getPriorityDays(priority) {
   if (!priority) return 0
   
   const priorityLower = priority.toLowerCase()
-  
-  if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
+  if (priorityLower.includes('instant') || priorityLower.includes('3 seconds')) {
+    return 3 / 86400 // 3 seconds in days
+  } else if (priorityLower.includes('urgent') || priorityLower.includes('within the day')) {
+    return 1
+  } else if (priorityLower.includes('standard') || priorityLower.includes('1 day') || priorityLower.includes('regular')) {
+    return 1
+  } else if (priorityLower.includes('simple') || priorityLower.includes('3 days')) {
     return 3
   } else if (priorityLower.includes('complex') || priorityLower.includes('7 days')) {
     return 7
   } else if (priorityLower.includes('highly technical') || priorityLower.includes('20 days')) {
     return 20
   }
-  
+
   return 0
 }
 
