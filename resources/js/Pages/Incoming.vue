@@ -615,6 +615,7 @@ const originalReceivedDate = ref(null); // Store original received date
 const approvalColumns = [
   { label: 'SUBJECT/TITLE', key: 'subject' },
   { label: 'UPLOADED BY', key: 'upload_by' },
+  { label: 'UPLOADED DATE', key: 'uploaded_date' },
   { label: 'UNIT', key: 'unit' },
   { label: 'PRIORITY', key: 'priority' },
   { label: 'ACTIONS', key: 'ACTIONS' },
@@ -642,7 +643,8 @@ const receivedColumns = [
 const transformedDocuments = computed(() => {
   return documents.value.map(doc => ({
     ...doc,
-    unit: doc.originating_office || doc.upload_to_user?.unit?.full_name || 'N/A'
+    unit: doc.originating_office || doc.upload_to_user?.unit?.full_name || 'N/A',
+    uploaded_date: doc.created_at ? formatDate(doc.created_at) : 'N/A'
   }));
 });
 
