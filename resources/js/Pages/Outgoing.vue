@@ -649,7 +649,7 @@ function getPriorityDays(priority) {
   }
   
   return 0
-}}
+}
 
 function getReceivedDate(document) {
   // Only use accepted_by_do_at - this is the actual timestamp when document was accepted/received
